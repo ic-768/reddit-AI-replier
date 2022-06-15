@@ -1,7 +1,6 @@
 from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
 from dotenv import load_dotenv
 import praw
-import re
 import os
 
 load_dotenv("./.env")
@@ -9,6 +8,7 @@ load_dotenv("./.env")
 mname = "facebook/blenderbot-400M-distill"
 model = BlenderbotForConditionalGeneration.from_pretrained(mname)
 tokenizer = BlenderbotTokenizer.from_pretrained(mname)
+num_replies = 3
 
 # add these to .env file in project dir
 reddit = praw.Reddit(
@@ -21,42 +21,53 @@ reddit = praw.Reddit(
 
 subreddit = reddit.subreddit("all")
 
-# Accept or reject an interaction
-def decide(submission, reply):
-    print("\033[0;31msubmission >> ", submission.title)
-    print("\033[0;32mReply >> ", reply, "\033[0m")
-    yesOrNo = input()
-    if yesOrNo.lower() == "y":
-        submission.reply(body=reply)
-        print("posted")
-    else:
-        print("moving on")
+
+# User chooses with a number corresponding to a potential reply
+def get_choice():
+    try:
+        choice = int(input())
+        if choice < num_replies and choice > -1:
+            return choice
+        else:
+            raise Exception("Invalid choice")
+    except:
+        print("Rejecting")
 
 
-def isPromising(text):
-    return text.startswith(
-        (
-            "what",
-            "does",
-            "who",
-            "why",
-            "has ",
-            "how",
-            "when",
-            "where",
-        )
-    )
+# Print choice and which number to press to select it
+def print_pretty_choice(idx, choice):
+    print(f"\033[0;32mReply {idx} >> {choice} \033[0m")
+
+
+# Choose or reject interactions
+def decide(submission, replies):
+    print("\033[0;31mTitle >> ", submission.title)
+    [print_pretty_choice(i, reply) for i, reply in enumerate(replies)]
+    choice = get_choice()
+    if choice:
+        submission.reply(body=replies[choice])
 
 
 def main():
     for submission in subreddit.stream.submissions(skip_existing=True):
-        text = submission.title.lower()
-        if len(text) < 90 and not "*" in text and isPromising(text):
-            inputs = tokenizer(submission.title, return_tensors="pt")
-            reply_ids = model.generate(**inputs)
-            reply = tokenizer.batch_decode(reply_ids)[0]
-            formattedReply = re.sub("<.+?>\s?", "", reply)
-            decide(submission, formattedReply)
+        title = submission.title
+        if len(title) > 10:
+            inputs = tokenizer(
+                title,
+                return_tensors="pt",
+            )
+            replies = model.generate(
+                **inputs,
+                # num_beams=num_replies,
+                # no_repeat_ngram_size=2,
+                # early_stopping=True,
+                do_sample=True,
+                top_k=50,
+                top_p=0.95,
+                num_return_sequences=num_replies,
+            )
+            replies = tokenizer.batch_decode(replies, skip_special_tokens=True)
+            decide(submission, replies)
 
 
 main()
