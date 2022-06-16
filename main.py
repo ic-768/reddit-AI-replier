@@ -1,5 +1,6 @@
 from transformers import BlenderbotTokenizer, BlenderbotForConditionalGeneration
 from dotenv import load_dotenv
+from time import sleep
 import praw
 import os
 
@@ -20,32 +21,6 @@ reddit = praw.Reddit(
 )
 
 subreddit = reddit.subreddit("all")
-
-
-# User chooses with a number corresponding to a potential reply
-def get_choice():
-    try:
-        choice = int(input())
-        if choice < num_replies and choice > -1:
-            return choice
-        else:
-            raise Exception("Invalid choice")
-    except:
-        print("Rejecting")
-
-
-# Print choice and which number to press to select it
-def print_pretty_choice(idx, choice):
-    print(f"\033[0;32mReply {idx} >> {choice} \033[0m")
-
-
-# Choose or reject interactions
-def decide(comment, replies):
-    print("\033[0;31mComment >> ", comment.body)
-    [print_pretty_choice(i, reply) for i, reply in enumerate(replies)]
-    choice = get_choice()
-    if choice:
-        comment.reply(body=replies[choice])
 
 
 def is_promising(comment):
@@ -71,7 +46,7 @@ def main():
                 comment.body,
                 return_tensors="pt",
             )
-            replies = model.generate(
+            reply = model.generate(
                 **inputs,
                 # num_beams=num_replies,
                 # no_repeat_ngram_size=2,
@@ -79,10 +54,10 @@ def main():
                 do_sample=True,
                 top_k=50,
                 top_p=0.95,
-                num_return_sequences=num_replies,
             )
-            replies = tokenizer.batch_decode(replies, skip_special_tokens=True)
-            decide(comment, replies)
+            reply = tokenizer.batch_decode(reply, skip_special_tokens=True)[0]
+            comment.reply(body=reply)
+            sleep(220)
 
 
 main()
