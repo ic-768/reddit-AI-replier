@@ -24,19 +24,28 @@ reddit = praw.Reddit(
 subreddit = reddit.subreddit("all")
 
 
-def is_promising(comment):
-    return comment.startswith(
-        (
-            "what",
-            "does",
-            "who",
-            "why",
-            "has ",
-            "how",
-            "when",
-            "where",
-        )
-    )
+def snooze():
+    sleep(170)
+
+
+# def is_promising(comment):
+#    return comment.startswith(
+#        (
+#            "will",
+#            "are",
+#            "is",
+#            "would",
+#            "did",
+#            "what",
+#            "does",
+#            "who",
+#            "why",
+#            "has ",
+#            "how",
+#            "when",
+#            "where",
+#        )
+#    )
 
 
 def generate_response(input):
@@ -57,55 +66,53 @@ def generate_response(input):
 
 
 def should_reply(text):
-    return len(text) < 90 and len(text) > 15 and not "*" in text and is_promising(text)
+    return (
+        len(text) < 90 and len(text) > 15 and not "*" in text
+    )  # and is_promising(text)
 
 
 def is_mod_comment(text):
     return "am a bot" in text or "moderators" in text
 
 
-#def main():
-#    for comment in subreddit.stream.comments(skip_existing=True):
-#        body = comment.body.lower()
-#        if should_reply(body) and not is_mod_comment(body):
-#            reply = generate_response(comment.body)
-#            print("replying", reply)
-#            try:
-#                comment.reply(body=reply)
-#                sleep(200)
-#            except Exception as e:
-#                print(e)
-#
-#
-#main()
-
-
 def main():
-   for comment in subreddit.stream.comments(skip_existing=True, pause_after=-1):
-       if comment is None:
-           for i in reddit.inbox.unread(limit=None):
-               if isinstance(
-                   i, Comment
-               ):  # make sure it's a comment, because it could also be a message
-                   reply = generate_response(i.body)
-                   try:
-                       if not is_mod_comment(i):
-                           i.reply(body=reply)
-                           i.mark_read()
-                           print("replying to reply")
-                           sleep(220)
-                   except Exception as e:
-                       print("exception in reply", e)
-       else:
-           body = comment.body.lower()
-           if should_reply(body) and not is_mod_comment(body):
-               reply = generate_response(comment.body)
-               try:
-                   comment.reply(body=reply)
-                   print("replying to comment")
-                   sleep(220)
-               except Exception as e:
-                   print("exception in reply", e)
+   for comment in subreddit.stream.comments(skip_existing=True):
+       body = comment.body.lower()
+       if should_reply(body) and not is_mod_comment(body):
+           reply = generate_response(comment.body)
+           try:
+               comment.reply(body=reply)
+               sleep(150)
+           except Exception as e:
+               print(e)
 
 
 main()
+
+
+#def main():
+#    for comment in subreddit.stream.comments(skip_existing=True, pause_after=-1):
+#            for i in reddit.inbox.unread(limit=None):
+#                if isinstance(
+#                    i, Comment
+#                ):  # make sure it's a comment, because it could also be a message
+#                    try:
+#                        if not is_mod_comment(i.body.lower()):
+#                            reply = generate_response(i.body)
+#                            i.reply(body=reply)
+#                            i.mark_read()
+#                            snooze()
+#                    except Exception as e:
+#                        print("exception in reply", e)
+#            if comment is not None:
+#                body = comment.body.lower()
+#                if should_reply(body) and not is_mod_comment(body):
+#                    reply = generate_response(comment.body)
+#                    try:
+#                        comment.reply(body=reply)
+#                        snooze()
+#                    except Exception as e:
+#                        print("exception in reply", e)
+#
+#
+#main()
